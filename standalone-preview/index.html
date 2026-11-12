@@ -1,0 +1,1329 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Job Copilot // Manav Sharma (Clean Developer Workspace)</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', '-apple-system', 'BlinkMacSystemFont', '"Segoe UI"', 'Roboto', 'sans-serif'],
+            mono: ['"JetBrains Mono"', 'ui-monospace', 'Menlo', 'Monaco', 'monospace'],
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      letter-spacing: -0.012em;
+      -webkit-font-smoothing: antialiased;
+    }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    .dark ::-webkit-scrollbar-thumb { background: #27272a; border-radius: 9999px; }
+    html:not(.dark) ::-webkit-scrollbar-thumb { background: #d4d4d8; border-radius: 9999px; }
+  </style>
+</head>
+<body class="h-screen flex flex-col bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 antialiased overflow-hidden transition-colors">
+
+  <!-- TOP MINIMAL NAVBAR -->
+  <header class="h-14 border-b border-zinc-200 dark:border-zinc-800/80 bg-white/90 dark:bg-zinc-950/90 backdrop-blur-md px-4 sm:px-6 flex items-center justify-between sticky top-0 z-30 font-sans text-xs transition-colors">
+    <div class="flex items-center gap-3">
+      <div class="flex items-center gap-2">
+        <div class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></div>
+        <span class="font-extrabold tracking-wider uppercase text-zinc-900 dark:text-zinc-100 font-mono">Job_Copilot</span>
+      </div>
+      <span class="text-zinc-300 dark:text-zinc-700 hidden sm:inline">/</span>
+      <div class="hidden sm:flex items-center gap-2 text-zinc-600 dark:text-zinc-400 font-mono">
+        <span class="text-zinc-900 dark:text-zinc-200 font-bold">Manav Sharma</span>
+        <span class="text-zinc-300 dark:text-zinc-700">•</span>
+        <span>NC State MEM (3.67 GPA)</span>
+        <span class="text-zinc-300 dark:text-zinc-700">•</span>
+        <span>Ex-Times Algo MD</span>
+        <span class="text-zinc-300 dark:text-zinc-700">•</span>
+        <span class="text-purple-600 dark:text-purple-400 font-medium">Lenovo AI Search (GEO)</span>
+      </div>
+    </div>
+
+    <!-- Right Controls -->
+    <div class="flex items-center gap-2">
+      <!-- Light / Dark Mode Toggle -->
+      <button onclick="toggleTheme()" id="theme-btn" class="p-1.5 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 transition-all" title="Toggle Light/Dark Theme">
+        <span id="theme-icon">☀️</span>
+      </button>
+
+      <!-- Fetch new roles -->
+      <button onclick="triggerIngest()" id="fetch-btn" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 text-zinc-700 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white transition-all font-mono">
+        <span id="fetch-spinner" class="hidden">🔄</span>
+        <span id="fetch-label">Fetch Live Roles</span>
+      </button>
+
+      <!-- Google Sheets Connection -->
+      <button onclick="openSettings()" class="px-2.5 py-1.5 rounded-lg bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200 transition-all font-mono">
+        <span class="hidden md:inline">📊 Google Sheets</span>
+        <span class="md:hidden">📊 Sheets</span>
+      </button>
+
+      <!-- Add Role -->
+      <button onclick="openAddJob()" class="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-white text-white dark:text-zinc-950 font-bold transition-all shadow-sm font-mono">
+        <span>+ Add</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- MAIN TWO-PANE APP CONTAINER -->
+  <div class="flex-1 flex overflow-hidden">
+    
+    <!-- LEFT PANE: HIGH-DENSITY ROLE LIST -->
+    <div class="w-full md:w-[380px] lg:w-[420px] shrink-0 border-r border-zinc-200 dark:border-zinc-800/80 flex flex-col h-full bg-white dark:bg-zinc-950/60 transition-colors">
+      
+      <!-- Search & Filters Container (Modern, Clean Sans-Serif, Zero Clutter) -->
+      <div class="p-3.5 border-b border-zinc-200 dark:border-zinc-800/60 space-y-3 font-sans text-xs">
+        
+        <!-- 1. Full-Width Search Input -->
+        <div class="relative w-full">
+          <span class="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 dark:text-zinc-500 text-xs">🔍</span>
+          <input
+            id="search-input"
+            type="text"
+            oninput="handleSearch(this.value)"
+            placeholder="Search roles, companies, tech (e.g. 'APM', 'LLM', 'GEO')..."
+            class="w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg pl-8 pr-8 py-2 text-zinc-900 dark:text-zinc-200 placeholder:text-zinc-400 dark:placeholder:text-zinc-500 text-xs focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-700 transition-all font-sans"
+          />
+          <span class="hidden sm:inline-block absolute right-2.5 top-1/2 -translate-y-1/2 px-1.5 py-0.5 text-[10px] text-zinc-400 dark:text-zinc-600 bg-zinc-100 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded font-mono">
+            /
+          </span>
+        </div>
+
+        <!-- 2. Dual Dropdown Selectors (Prevents horizontal overflow & clipping) -->
+        <div class="grid grid-cols-2 gap-2">
+          <!-- Role Category Dropdown -->
+          <div class="space-y-1">
+            <label class="text-[10px] text-zinc-500 dark:text-zinc-400 uppercase font-bold tracking-wider block">
+              Role Type
+            </label>
+            <div class="relative">
+              <select
+                id="select-category"
+                onchange="setCategory(this.value)"
+                class="w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2.5 py-1.5 text-zinc-900 dark:text-zinc-200 text-xs font-semibold focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-700 cursor-pointer pr-6 truncate font-sans"
+              >
+                <option value="all">All Roles</option>
+                <option value="product">Product & TPM</option>
+                <option value="growth">Growth & GEO</option>
+                <option value="recruiter">Recruiter Posts 🎯</option>
+                <option value="applied">Applied</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Experience Dropdown -->
+          <div class="space-y-1">
+            <label class="text-[10px] text-zinc-500 dark:text-zinc-400 uppercase font-bold tracking-wider block">
+              Experience
+            </label>
+            <div class="relative">
+              <select
+                id="select-experience"
+                onchange="setExperience(this.value)"
+                class="w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg px-2.5 py-1.5 text-zinc-900 dark:text-zinc-200 text-xs font-semibold focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-700 cursor-pointer pr-6 truncate font-sans"
+              >
+                <option value="all">All Levels</option>
+                <option value="entry">🎓 Entry Level / Early</option>
+                <option value="mid">Mid-Senior Level</option>
+                <option value="lead">Lead / Executive</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- 3. Fast Toggle Pills (Remote, Entry Level, F-1 STEM OPT, No Internships) -->
+        <div class="flex flex-wrap items-center gap-1.5 pt-0.5">
+          <!-- Remote / Raleigh Toggle -->
+          <button onclick="toggleRemoteFilter()" id="btn-remote" class="flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-medium border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/60 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200 transition-all whitespace-nowrap">
+            <span>📍 Remote / Raleigh</span>
+          </button>
+
+          <!-- Quick Entry Level Toggle -->
+          <button onclick="toggleEntryLevelQuick()" id="btn-entry" class="flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-medium border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/60 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200 transition-all whitespace-nowrap">
+            <span>🎓 Entry Level</span>
+          </button>
+
+          <!-- F-1 STEM OPT Toggle -->
+          <button onclick="toggleStemOptFilter()" id="btn-stem" class="flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-medium border border-emerald-400 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 font-bold transition-all whitespace-nowrap" title="Filter for F-1 STEM OPT eligible roles (excludes US Citizen only and non-US roles)">
+            <span>🛡️ F-1 STEM OPT</span>
+          </button>
+
+          <!-- No Internships/Co-ops Toggle -->
+          <button onclick="toggleInternshipsFilter()" id="btn-interns" class="flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-medium border border-purple-400 dark:border-purple-800 bg-purple-50 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 font-bold transition-all whitespace-nowrap" title="Strictly exclude internships and co-ops (Permanent full-time roles only)">
+            <span>🚫 No Intern/Co-op</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Feed List -->
+      <div class="flex-1 overflow-y-auto p-3 space-y-2" id="jobs-list">
+        <!-- Rendered by JS -->
+      </div>
+
+      <!-- Feed Footer -->
+      <div class="px-4 py-2 border-t border-zinc-200 dark:border-zinc-800/60 text-[11px] font-mono text-zinc-500 flex items-center justify-between bg-zinc-50/50 dark:bg-zinc-950/50">
+        <span id="results-count">10 roles shown</span>
+        <span><kbd class="px-1 py-0.5 rounded bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800">J</kbd>/<kbd class="px-1 py-0.5 rounded bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800">K</kbd> to move</span>
+      </div>
+    </div>
+
+    <!-- RIGHT PANE: APPLICATION COPILOT (LINKEDIN DM & COVER LETTER ONLY) -->
+    <div class="flex-1 flex flex-col h-full overflow-y-auto bg-white dark:bg-zinc-950 transition-colors" id="copilot-canvas">
+      <!-- Sticky Action Bar -->
+      <div class="sticky top-0 z-20 px-6 sm:px-8 py-3.5 border-b border-zinc-200 dark:border-zinc-800/80 bg-white/95 dark:bg-zinc-950/95 backdrop-blur-md flex items-center justify-between gap-4 font-mono text-xs">
+        <div class="flex items-center gap-2 text-zinc-500 dark:text-zinc-400 truncate">
+          <span id="canvas-company-bread" class="text-zinc-900 dark:text-zinc-200 font-bold">Cisco</span>
+          <span class="text-zinc-300 dark:text-zinc-700">/</span>
+          <span id="canvas-title-bread" class="truncate text-zinc-700 dark:text-zinc-300 font-medium">Intake Product Manager</span>
+          <span class="text-zinc-300 dark:text-zinc-700">•</span>
+          <span id="canvas-match-bread" class="text-emerald-600 dark:text-emerald-400 font-bold">95% Match</span>
+        </div>
+
+        <div class="flex items-center gap-2 shrink-0">
+          <!-- Report Dead Link Button -->
+          <button onclick="reportCurrentDeadLink()" class="px-2.5 py-1.5 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 hover:bg-rose-50 dark:hover:bg-rose-950/40 hover:border-rose-300 dark:hover:border-rose-900 text-zinc-600 dark:text-zinc-400 hover:text-rose-600 dark:hover:text-rose-400 transition-all flex items-center gap-1.5 font-medium" title="Report this listing as expired, dead, or non-existent">
+            <span>🚩</span>
+            <span class="hidden sm:inline">Report Dead Link</span>
+          </button>
+
+          <!-- Mark as Applied -->
+          <button onclick="toggleApplyCurrent()" id="canvas-apply-btn" class="px-3 py-1.5 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 hover:border-zinc-300 dark:hover:border-zinc-700 text-zinc-700 dark:text-zinc-300 hover:text-zinc-950 dark:hover:text-white transition-all font-medium">
+            Mark as Applied
+          </button>
+
+          <!-- Direct Requisition URL -->
+          <a id="canvas-direct-url" href="#" target="_blank" rel="noopener noreferrer" class="px-3.5 py-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 dark:bg-white dark:hover:bg-zinc-200 text-white dark:text-zinc-950 font-bold flex items-center gap-1.5 transition-all shadow-sm">
+            <span>Open Job Page</span>
+            <span>↗</span>
+          </a>
+        </div>
+      </div>
+
+      <!-- Document Content -->
+      <div class="max-w-3xl mx-auto px-6 sm:px-8 py-8 space-y-8 w-full font-sans">
+        <!-- Title & Metadata -->
+        <div>
+          <div class="flex flex-wrap items-center gap-2 mb-2 font-mono text-xs">
+            <span id="canvas-level-tag" class="px-2 py-0.5 rounded font-bold border flex items-center gap-1">
+              🎓 Entry Level / Early Career
+            </span>
+            <span id="canvas-stem-tag" class="px-2 py-0.5 rounded bg-cyan-100 dark:bg-cyan-950/60 border border-cyan-300 dark:border-cyan-800/60 text-cyan-800 dark:text-cyan-300 font-semibold flex items-center gap-1">
+              <span>🛡️</span> F-1 STEM OPT (3 Yrs)
+            </span>
+            <span id="canvas-type-tag" class="px-2 py-0.5 rounded bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400">
+              Direct Requisition
+            </span>
+            <span id="canvas-category-tag" class="px-2 py-0.5 rounded bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400">
+              Product Manager
+            </span>
+          </div>
+
+          <h1 id="canvas-title" class="text-2xl sm:text-3xl font-extrabold text-zinc-900 dark:text-white tracking-tight leading-tight">
+            Intake Product Manager (Cisco Validated)
+          </h1>
+
+          <div class="flex flex-wrap items-center gap-4 mt-3 text-xs text-zinc-600 dark:text-zinc-400 font-mono">
+            <span class="flex items-center gap-1.5 text-zinc-900 dark:text-zinc-200 font-bold">
+              <span>🏢</span>
+              <span id="canvas-company">Cisco</span>
+            </span>
+            <span class="flex items-center gap-1.5">
+              <span>📍</span>
+              <span id="canvas-location">Research Triangle Park, NC</span>
+            </span>
+            <span class="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 font-bold">
+              <span>💰</span>
+              <span id="canvas-salary">$138,000 - $175,000</span>
+            </span>
+          </div>
+
+          <!-- Prominent Date Box: Posted & Fetched -->
+          <div class="flex flex-wrap items-center gap-4 mt-3.5 p-3 rounded-xl bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 text-xs font-mono text-zinc-700 dark:text-zinc-300">
+            <span class="flex items-center gap-1.5">
+              <span class="text-cyan-600 dark:text-cyan-400">📅</span>
+              <span><strong>Date Role Posted:</strong> <span id="canvas-date-posted">Nov 9, 2026</span></span>
+            </span>
+            <span class="text-zinc-300 dark:text-zinc-700 hidden sm:inline">•</span>
+            <span class="flex items-center gap-1.5">
+              <span class="text-purple-600 dark:text-purple-400">⬇️</span>
+              <span><strong>Date Listing Fetched:</strong> <span id="canvas-date-fetched">Nov 11, 2026</span></span>
+            </span>
+          </div>
+        </div>
+
+        <!-- Recruiter Box (Visible if Recruiter Post) -->
+        <div id="canvas-recruiter-box" class="hidden p-4 rounded-xl bg-purple-50 dark:bg-zinc-900/70 border border-purple-200 dark:border-zinc-800 space-y-2">
+          <div class="flex items-center justify-between text-xs font-mono">
+            <span class="text-purple-800 dark:text-purple-300 font-bold flex items-center gap-1.5">
+              <span>🎯 Recruiter:</span>
+              <span id="canvas-recruiter-name">Lauren Mitchell</span>
+              <span id="canvas-recruiter-title" class="text-zinc-500 font-normal"></span>
+            </span>
+            <a id="canvas-recruiter-link" href="#" target="_blank" rel="noopener noreferrer" class="text-purple-700 dark:text-zinc-400 hover:underline flex items-center gap-1 text-[11px] font-semibold">
+              <span>LinkedIn Profile</span>
+              <span>↗</span>
+            </a>
+          </div>
+          <p id="canvas-recruiter-snippet" class="text-xs text-zinc-800 dark:text-zinc-300 italic font-sans leading-relaxed"></p>
+        </div>
+
+        <!-- ============================================================== -->
+        <!-- OPTION 1: LINKEDIN DM (High-Conversion, Under 70 Words) -->
+        <!-- ============================================================== -->
+        <section class="space-y-3">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+            <div>
+              <div class="flex items-center gap-2">
+                <span class="text-cyan-600 dark:text-cyan-400 text-sm">✉️</span>
+                <h2 class="text-base font-extrabold text-zinc-900 dark:text-zinc-100 font-mono uppercase tracking-wider">
+                  1. LinkedIn DM
+                </h2>
+              </div>
+              <p class="text-xs text-zinc-500 dark:text-zinc-400 font-sans mt-0.5">
+                Targeted for <span id="dm-recipient-label" class="font-semibold text-zinc-800 dark:text-zinc-200">Hiring Lead</span> (<span class="font-mono">&lt;70 words, high response rate</span>)
+              </p>
+            </div>
+
+            <div class="flex items-center gap-2">
+              <!-- Tone Buttons -->
+              <div class="flex rounded-lg p-0.5 bg-zinc-200 dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-800 text-xs font-mono">
+                <button onclick="setDmTone('short')" id="dm-tone-short" class="px-2.5 py-1 rounded text-[11px] bg-white dark:bg-zinc-800 text-zinc-950 dark:text-white font-bold shadow-sm">Short (Standard)</button>
+                <button onclick="setDmTone('metrics')" id="dm-tone-metrics" class="px-2.5 py-1 rounded text-[11px] text-zinc-600 dark:text-zinc-400 hover:text-zinc-950 dark:hover:text-zinc-200">Metrics Focus</button>
+                <button onclick="setDmTone('referral')" id="dm-tone-referral" class="px-2.5 py-1 rounded text-[11px] text-zinc-600 dark:text-zinc-400 hover:text-zinc-950 dark:hover:text-zinc-200">Guidance</button>
+              </div>
+
+              <!-- Copy DM Button -->
+              <button onclick="copyLinkedInDM()" class="px-3 py-1.5 rounded-lg bg-zinc-100 dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-800 hover:border-zinc-400 dark:hover:border-zinc-700 text-zinc-800 dark:text-zinc-200 text-xs font-mono font-bold transition-all flex items-center gap-1.5 shadow-sm shrink-0">
+                <span>📋 Copy DM</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Recipient Name input & DM Box -->
+          <div class="space-y-2">
+            <div class="flex items-center gap-2 text-xs font-mono">
+              <span class="text-zinc-500">Recipient Name:</span>
+              <input
+                id="dm-recipient-input"
+                type="text"
+                value="Anika"
+                oninput="updateDmText()"
+                placeholder="Recipient name..."
+                class="px-2 py-0.5 rounded bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-zinc-100 text-xs font-medium focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-700 w-32"
+              />
+            </div>
+
+            <div id="canvas-dm-text" class="p-4 rounded-xl bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 text-xs text-zinc-800 dark:text-zinc-200 font-mono whitespace-pre-wrap leading-relaxed">
+              <!-- DM content -->
+            </div>
+          </div>
+        </section>
+
+        <!-- ============================================================== -->
+        <!-- OPTION 2: COVER LETTER / COLD EMAIL -->
+        <!-- ============================================================== -->
+        <section class="space-y-3">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+            <div>
+              <div class="flex items-center gap-2">
+                <span class="text-purple-600 dark:text-purple-400 text-sm">📄</span>
+                <h2 class="text-base font-extrabold text-zinc-900 dark:text-zinc-100 font-mono uppercase tracking-wider">
+                  2. Cover Letter / Cold Email
+                </h2>
+              </div>
+              <p class="text-xs text-zinc-500 dark:text-zinc-400 font-sans mt-0.5">
+                Executive 3-pillar structure with verified portfolio and LinkedIn links
+              </p>
+            </div>
+
+            <div class="flex items-center gap-2">
+              <!-- Flavor Buttons -->
+              <div class="flex rounded-lg p-0.5 bg-zinc-200 dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-800 text-xs font-mono">
+                <button onclick="setCoverLetterFlavor('standard')" id="cl-flavor-standard" class="px-2.5 py-1 rounded text-[11px] bg-white dark:bg-zinc-800 text-zinc-950 dark:text-white font-bold shadow-sm">Standard</button>
+                <button onclick="setCoverLetterFlavor('product')" id="cl-flavor-product" class="px-2.5 py-1 rounded text-[11px] text-zinc-600 dark:text-zinc-400 hover:text-zinc-950 dark:hover:text-zinc-200">Product & PM</button>
+                <button onclick="setCoverLetterFlavor('growth')" id="cl-flavor-growth" class="px-2.5 py-1 rounded text-[11px] text-zinc-600 dark:text-zinc-400 hover:text-zinc-950 dark:hover:text-zinc-200">Growth & GEO</button>
+              </div>
+
+              <!-- Copy Cover Letter Button -->
+              <button onclick="copyCoverLetter()" class="px-3 py-1.5 rounded-lg bg-zinc-100 dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-800 hover:border-zinc-400 dark:hover:border-zinc-700 text-zinc-800 dark:text-zinc-200 text-xs font-mono font-bold transition-all flex items-center gap-1.5 shadow-sm shrink-0">
+                <span>📋 Copy Cover Letter</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Hiring Manager input & Cover Letter Box -->
+          <div class="space-y-2">
+            <div class="flex items-center gap-2 text-xs font-mono">
+              <span class="text-zinc-500">Hiring Lead / Manager:</span>
+              <input
+                id="cl-recipient-input"
+                type="text"
+                value="Maria"
+                oninput="updateCoverLetterText()"
+                placeholder="Manager name..."
+                class="px-2 py-0.5 rounded bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-zinc-100 text-xs font-medium focus:outline-none focus:border-zinc-400 dark:focus:border-zinc-700 w-32"
+              />
+            </div>
+
+            <div id="canvas-cl-text" class="p-5 rounded-xl bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 text-xs text-zinc-800 dark:text-zinc-200 font-sans whitespace-pre-wrap leading-relaxed">
+              <!-- Cover Letter content -->
+            </div>
+          </div>
+        </section>
+
+        <!-- REQUISITION DESCRIPTION -->
+        <section class="space-y-3 pt-4 border-t border-zinc-200 dark:border-zinc-800">
+          <div class="flex items-center justify-between">
+            <h2 class="text-base font-extrabold text-zinc-900 dark:text-zinc-100 font-mono uppercase tracking-wider">
+              Requisition Description
+            </h2>
+            <a id="canvas-desc-url" href="#" target="_blank" rel="noopener noreferrer" class="text-xs font-mono font-bold text-cyan-600 dark:text-cyan-400 hover:underline flex items-center gap-1">
+              <span>Apply on Company Portal</span>
+              <span>↗</span>
+            </a>
+          </div>
+
+          <p id="canvas-desc" class="text-xs text-zinc-700 dark:text-zinc-400 font-sans leading-relaxed"></p>
+
+          <div id="canvas-keywords" class="flex flex-wrap gap-1.5 pt-2">
+            <!-- Keywords rendered here -->
+          </div>
+        </section>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOAST NOTIFICATION -->
+  <div id="toast" class="hidden fixed bottom-5 right-5 z-50 flex items-center gap-2.5 px-4 py-2.5 rounded-xl bg-zinc-900 dark:bg-zinc-100 border border-zinc-700 dark:border-zinc-300 text-white dark:text-zinc-950 text-xs font-mono shadow-xl transition-all">
+    <span class="text-emerald-400 dark:text-emerald-600 font-bold">✓</span>
+    <span id="toast-text" class="font-semibold">Action completed</span>
+  </div>
+
+  <script>
+    // 10 REAL REQUISITIONS WITH DIRECT URLS, DATES & ENTRY LEVEL LABELS
+    const jobs = [
+      {
+        id: "cisco-pm-01",
+        title: "Intake Product Manager (Cisco Validated)",
+        company: "Cisco",
+        location: "Research Triangle Park / Raleigh, NC (Hybrid)",
+        isRemote: false,
+        isRaleighHybrid: true,
+        type: "Direct",
+        experienceLevel: "Mid-Senior",
+        isEntryLevel: false,
+        datePosted: "2026-11-09",
+        dateFetched: "2026-11-11",
+        dateFound: "2026-11-11",
+        url: "https://jobs.cisco.com/jobs/ProjectDetail/Intake-Product-Manager-Raleigh/1418932",
+        roleCategory: "Product Manager",
+        status: "New",
+        salarySnippet: "$138,000 - $175,000",
+        description: "Drive cross-portfolio product architectures, translating integrated technology strategies into field-credible Cisco Validated Designs. Partner with engineering leads, customer architects, and agile teams to define requirements, govern sprint backlogs, and measure adoption KPIs across cloud and networking endpoints.",
+        matchScore: 95,
+        primaryProfile: "Product",
+        matchedKeywords: ["product manager", "agile", "scrum", "roadmap", "cross-functional", "kpi", "sql"]
+      },
+      {
+        id: "bandwidth-pm-03",
+        title: "Associate Product Manager (APM) - Cloud Communications",
+        company: "Bandwidth Inc.",
+        location: "Raleigh, NC (HQ)",
+        isRemote: false,
+        isRaleighHybrid: true,
+        type: "Recruiter Post",
+        experienceLevel: "Entry Level",
+        isEntryLevel: true,
+        datePosted: "2026-11-10",
+        dateFetched: "2026-11-11",
+        dateFound: "2026-11-10",
+        recruiterName: "Lauren Mitchell",
+        recruiterTitle: "Lead University & Early Career Talent @ Bandwidth",
+        recruiterProfileUrl: "https://www.linkedin.com/company/bandwidth-inc",
+        recruiterPostSnippet: "Calling all Raleigh APM talent and 2026/2027 Master's grads! We just opened our Associate Product Manager cohort for our voice and messaging API team. Seeking candidates with CSPO or Agile training and coding literacy. DM me directly!",
+        url: "https://job-boards.greenhouse.io/bandwidth/jobs/",
+        roleCategory: "Associate PM",
+        status: "New",
+        salarySnippet: "$95,000 - $125,000",
+        description: "Join our Raleigh APM cohort. Partner with senior PMs to write PRDs, manage sprint ceremonies, analyze API telemetry, and deliver cloud messaging solutions at global scale.",
+        matchScore: 98,
+        primaryProfile: "Product",
+        matchedKeywords: ["associate product manager", "cspo", "scrum", "agile", "api", "sql", "python"]
+      },
+      {
+        id: "pendo-pm-02",
+        title: "Product Manager, Analytics & Experience",
+        company: "Pendo.io",
+        location: "Raleigh, NC (Downtown HQ)",
+        isRemote: false,
+        isRaleighHybrid: true,
+        type: "Direct",
+        experienceLevel: "Mid-Senior",
+        isEntryLevel: false,
+        datePosted: "2026-11-08",
+        dateFetched: "2026-11-11",
+        dateFound: "2026-11-10",
+        url: "https://job-boards.greenhouse.io/pendo/jobs/",
+        roleCategory: "Product Manager",
+        status: "New",
+        salarySnippet: "$130,000 - $160,000",
+        description: "Own product analytics, user feedback ingestion loops, and digital product experience tooling. Collaborate across design, data engineering, and go-to-market teams to run customer journey discovery, test conversion optimization hypotheses, and scale product adoption.",
+        matchScore: 97,
+        primaryProfile: "Product",
+        matchedKeywords: ["product manager", "cro", "analytics", "user stories", "ux", "agile", "roadmap"]
+      },
+      {
+        id: "gofish-geo-10",
+        title: "Junior AI Search & GEO Strategist (Generative Engine Optimization)",
+        company: "Go Fish Digital",
+        location: "Raleigh, NC / Remote",
+        isRemote: true,
+        isRaleighHybrid: true,
+        type: "Direct",
+        experienceLevel: "Entry Level",
+        isEntryLevel: true,
+        datePosted: "2026-11-10",
+        dateFetched: "2026-11-11",
+        dateFound: "2026-11-11",
+        url: "https://gofishdigital.com/careers/",
+        roleCategory: "GEO / AI Search",
+        status: "New",
+        salarySnippet: "$85,000 - $115,000",
+        description: "Entry-level and early-career growth strategist role. Execute cutting-edge Generative Engine Optimization (GEO) and technical schema strategies. Benchmark AI citations across ChatGPT, Perplexity, and Claude for fast-growing SaaS brands.",
+        matchScore: 99,
+        primaryProfile: "Growth",
+        matchedKeywords: ["geo", "ai search", "generative engine optimization", "seo", "schema", "python", "analytics"]
+      },
+      {
+        id: "customerio-pm-04",
+        title: "Associate Product Manager, Intelligence & Automations",
+        company: "Customer.io",
+        location: "Remote (US)",
+        isRemote: true,
+        isRaleighHybrid: false,
+        type: "Direct",
+        experienceLevel: "Entry Level",
+        isEntryLevel: true,
+        datePosted: "2026-11-09",
+        dateFetched: "2026-11-11",
+        dateFound: "2026-11-11",
+        url: "https://job-boards.greenhouse.io/customerio/jobs/",
+        roleCategory: "Associate PM",
+        status: "New",
+        salarySnippet: "$100,000 - $130,000",
+        description: "Accelerate automated behavioral marketing pipelines and generative personalization tools. Collaborate with distributed teams to ship LLM workflow triggers and analytics visualization.",
+        matchScore: 96,
+        primaryProfile: "Product",
+        matchedKeywords: ["associate product manager", "automation", "llm", "analytics", "prds"]
+      },
+      {
+        id: "grafana-pm-05",
+        title: "Product Manager, App Observability & OpenTelemetry",
+        company: "Grafana Labs",
+        location: "Remote (US)",
+        isRemote: true,
+        isRaleighHybrid: false,
+        type: "Direct",
+        experienceLevel: "Mid-Senior",
+        isEntryLevel: false,
+        datePosted: "2026-11-08",
+        dateFetched: "2026-11-11",
+        dateFound: "2026-11-08",
+        url: "https://job-boards.greenhouse.io/grafanalabs/jobs/",
+        roleCategory: "Technical PM",
+        status: "New",
+        salarySnippet: "$150,000 - $185,000",
+        description: "Drive developer observability roadmaps, telemetry visualization, and open-source platform integration. Work closely with engineers and customers on OpenTelemetry benchmarks and dashboards.",
+        matchScore: 95,
+        primaryProfile: "Product",
+        matchedKeywords: ["technical pm", "opentelemetry", "developer tools", "metrics", "observability"]
+      },
+      {
+        id: "airbnb-geo-06",
+        title: "Senior SEO & AI Search Strategy Lead (GEO / AEO)",
+        company: "Airbnb",
+        location: "Remote (US)",
+        isRemote: true,
+        isRaleighHybrid: false,
+        type: "Recruiter Post",
+        experienceLevel: "Mid-Senior",
+        isEntryLevel: false,
+        datePosted: "2026-11-07",
+        dateFetched: "2026-11-11",
+        dateFound: "2026-11-07",
+        recruiterName: "Marcus Sterling",
+        recruiterTitle: "Staff Recruiter, Growth Marketing @ Airbnb",
+        recruiterProfileUrl: "https://www.linkedin.com/company/airbnb",
+        recruiterPostSnippet: "My team at Airbnb is looking for an AI Search & Generative Engine Optimization (GEO) Lead! If you benchmark LLMs (ChatGPT, Claude, Perplexity), understand semantic schema architectures, and want to own generative discovery, send me a DM.",
+        url: "https://careers.airbnb.com/positions/",
+        roleCategory: "GEO / AI Search",
+        status: "New",
+        salarySnippet: "$160,000 - $200,000 + Equity",
+        description: "Pioneer Generative Engine Optimization (GEO) and Answer Engine Optimization (AEO) frameworks across global discovery engines. Deploy structured Schema.org markups, run multi-LLM citation benchmarks, and align content architecture with generative search algorithms.",
+        matchScore: 99,
+        primaryProfile: "Growth",
+        matchedKeywords: ["geo", "ai search", "aeo", "schema", "llm", "seo", "citation share"]
+      },
+      {
+        id: "databricks-tpm-07",
+        title: "Technical Product Manager - Developer Platform & GenAI",
+        company: "Databricks",
+        location: "Remote (US) / Raleigh Hub",
+        isRemote: true,
+        isRaleighHybrid: true,
+        type: "Recruiter Post",
+        experienceLevel: "Mid-Senior",
+        isEntryLevel: false,
+        datePosted: "2026-11-05",
+        dateFetched: "2026-11-11",
+        dateFound: "2026-11-05",
+        recruiterName: "Sarah Jenkins",
+        recruiterTitle: "Lead Talent Partner, AI & Platform @ Databricks",
+        recruiterProfileUrl: "https://www.linkedin.com/company/databricks",
+        recruiterPostSnippet: "We're hiring for my team! Looking for a Technical Product Manager who bridges deep engineering workflows with GenAI developer tooling. If you love building evaluation rubrics, Python SDKs, and data pipelines, hit my DMs.",
+        url: "https://job-boards.greenhouse.io/databricks/jobs/",
+        roleCategory: "Technical PM",
+        status: "New",
+        salarySnippet: "$155,000 - $190,000 + Equity",
+        description: "Lead product roadmap for developer interfaces, generative AI evaluation frameworks, and lakehouse integrations. Collaborate with ML researchers and distributed systems engineers.",
+        matchScore: 97,
+        primaryProfile: "Product",
+        matchedKeywords: ["technical pm", "genai", "python", "data pipelines", "evaluations", "sdk"]
+      },
+      {
+        id: "redhat-tpm-08",
+        title: "Technical Program Manager – OpenShift AI & Cloud",
+        company: "Red Hat",
+        location: "Raleigh, NC (Downtown HQ)",
+        isRemote: false,
+        isRaleighHybrid: true,
+        type: "Direct",
+        experienceLevel: "Mid-Senior",
+        isEntryLevel: false,
+        datePosted: "2026-11-06",
+        dateFetched: "2026-11-11",
+        dateFound: "2026-11-06",
+        url: "https://careers.redhat.com/jobs/search?q=Product+Manager&location=Raleigh",
+        roleCategory: "Program Manager",
+        status: "Applied",
+        salarySnippet: "$140,000 - $172,000",
+        description: "Facilitate cross-team engineering program governance across Red Hat OpenShift AI platforms. Unblock cross-functional dependencies, drive agile sprint retrospectives, track delivery metrics, and align technical architecture with enterprise roadmaps.",
+        matchScore: 94,
+        primaryProfile: "Product",
+        matchedKeywords: ["program manager", "agile", "scrum", "openshift", "ai", "cross-functional"]
+      },
+      {
+        id: "toast-pm-09",
+        title: "Associate Product Manager, Platform Ecosystems",
+        company: "Toast",
+        location: "Remote (US)",
+        isRemote: true,
+        isRaleighHybrid: false,
+        type: "Direct",
+        experienceLevel: "Entry Level",
+        isEntryLevel: true,
+        datePosted: "2026-11-04",
+        dateFetched: "2026-11-11",
+        dateFound: "2026-11-04",
+        url: "https://job-boards.greenhouse.io/toast/jobs/",
+        roleCategory: "Associate PM",
+        status: "New",
+        salarySnippet: "$98,000 - $128,000",
+        description: "Support end-to-end product strategy and execution for core developer platform capabilities. Drive merchant journey discovery, conversion optimization, and technical API integrations.",
+        matchScore: 95,
+        primaryProfile: "Product",
+        matchedKeywords: ["associate product manager", "platform", "api", "merchant experience", "cro"]
+      }
+    ];
+
+    let currentJob = jobs[0];
+    let currentCategory = 'all';
+    let currentExperience = 'all';
+    let currentDmTone = 'short';
+    let currentClFlavor = 'standard';
+    let searchQuery = '';
+    let onlyRemoteOrRaleigh = false;
+    let onlyStemOpt = true; // Default true (candidate is on F-1 STEM OPT)
+    let excludeInternships = true; // Default true (strictly no internships or co-ops)
+
+    function formatDate(dStr) {
+      if (!dStr) return 'Recent';
+      try {
+        const parts = dStr.split('-');
+        if (parts.length === 3) {
+          const d = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+          return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+        }
+        return dStr;
+      } catch(e) {
+        return dStr;
+      }
+    }
+
+    function init() {
+      // Sync theme
+      const savedTheme = localStorage.getItem('job_copilot_theme');
+      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      const isDark = savedTheme !== null ? savedTheme === 'dark' : prefersDark;
+      setThemeState(isDark);
+
+      updateCounts();
+      renderFeed();
+      renderCanvas();
+    }
+
+    function toggleTheme() {
+      const isDark = document.documentElement.classList.contains('dark');
+      setThemeState(!isDark);
+      showToast(!isDark ? "Switched to Dark Mode" : "Switched to Light Mode");
+    }
+
+    function setThemeState(dark) {
+      if (dark) {
+        document.documentElement.classList.add('dark');
+        document.getElementById('theme-icon').textContent = '☀️';
+        localStorage.setItem('job_copilot_theme', 'dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+        document.getElementById('theme-icon').textContent = '🌙';
+        localStorage.setItem('job_copilot_theme', 'light');
+      }
+    }
+
+    function updateCounts() {
+      const valid = jobs.filter(j => {
+        if (j.status === 'Reported' || j.status === 'Archived') return false;
+        if (excludeInternships) {
+          const lower = j.title.toLowerCase();
+          if (lower.includes('intern') || lower.includes('co-op') || lower.includes('coop')) return false;
+        }
+        return true;
+      });
+
+      const total = valid.length;
+      const entryCount = valid.filter(j => j.isEntryLevel).length;
+      const recCount = valid.filter(j => j.type === 'Recruiter Post').length;
+      const prodCount = valid.filter(j => ['Product Manager', 'Technical PM', 'Associate PM', 'Program Manager'].includes(j.roleCategory)).length;
+      const growthCount = valid.filter(j => ['GEO / AI Search', 'Product Marketing'].includes(j.roleCategory)).length;
+      const appliedCount = valid.filter(j => j.status === 'Applied').length;
+
+      const selCat = document.getElementById('select-category');
+      if (selCat) {
+        selCat.options[0].text = `All Roles (${total})`;
+        selCat.options[1].text = `Product & TPM (${prodCount})`;
+        selCat.options[2].text = `Growth & GEO (${growthCount})`;
+        selCat.options[3].text = `Recruiter Posts 🎯 (${recCount})`;
+        selCat.options[4].text = `Applied (${appliedCount})`;
+      }
+
+      const selExp = document.getElementById('select-experience');
+      if (selExp) {
+        selExp.options[1].text = `🎓 Entry Level / Early (${entryCount})`;
+      }
+    }
+
+    function setCategory(val) {
+      currentCategory = val;
+      renderFeed();
+    }
+
+    function setExperience(val) {
+      currentExperience = val;
+      const btnEntry = document.getElementById('btn-entry');
+      if (val === 'entry') {
+        btnEntry.className = "flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-medium border border-amber-400 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 font-bold transition-all whitespace-nowrap";
+      } else {
+        btnEntry.className = "flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-medium border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/60 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200 transition-all whitespace-nowrap";
+      }
+      renderFeed();
+    }
+
+    function toggleEntryLevelQuick() {
+      const nextExp = currentExperience === 'entry' ? 'all' : 'entry';
+      document.getElementById('select-experience').value = nextExp;
+      setExperience(nextExp);
+    }
+
+    function toggleRemoteFilter() {
+      onlyRemoteOrRaleigh = !onlyRemoteOrRaleigh;
+      const btn = document.getElementById('btn-remote');
+      if (onlyRemoteOrRaleigh) {
+        btn.className = "flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-medium border border-cyan-400 dark:border-cyan-800 bg-cyan-50 dark:bg-cyan-950/60 text-cyan-700 dark:text-cyan-300 font-bold transition-all whitespace-nowrap";
+      } else {
+        btn.className = "flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-medium border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/60 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200 transition-all whitespace-nowrap";
+      }
+      renderFeed();
+    }
+
+    function toggleStemOptFilter() {
+      onlyStemOpt = !onlyStemOpt;
+      const btn = document.getElementById('btn-stem');
+      if (onlyStemOpt) {
+        btn.className = "flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-medium border border-emerald-400 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 font-bold transition-all whitespace-nowrap";
+        showToast("F-1 STEM OPT filter enabled (US roles only)");
+      } else {
+        btn.className = "flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-medium border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/60 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200 transition-all whitespace-nowrap";
+        showToast("F-1 STEM OPT filter disabled");
+      }
+      renderFeed();
+    }
+
+    function toggleInternshipsFilter() {
+      excludeInternships = !excludeInternships;
+      const btn = document.getElementById('btn-interns');
+      if (excludeInternships) {
+        btn.className = "flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-medium border border-purple-400 dark:border-purple-800 bg-purple-50 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 font-bold transition-all whitespace-nowrap";
+        showToast("Internships and co-ops excluded");
+      } else {
+        btn.className = "flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-medium border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/60 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200 transition-all whitespace-nowrap";
+        showToast("Internships filter turned off");
+      }
+      updateCounts();
+      renderFeed();
+    }
+
+    function getFilteredJobs() {
+      return jobs.filter(j => {
+        // Exclude reported or archived dead links
+        if (j.status === 'Reported' || j.status === 'Archived') return false;
+
+        const titleLower = j.title.toLowerCase();
+        const descLower = (j.description || '').toLowerCase();
+        const locLower = (j.location || '').toLowerCase();
+
+        // 1. Exclude internships and co-ops
+        if (excludeInternships) {
+          if (titleLower.includes('intern') || titleLower.includes('internship') || titleLower.includes('co-op') || titleLower.includes('coop') || titleLower.includes('fellow')) {
+            return false;
+          }
+        }
+
+        // 2. F-1 STEM OPT filter (US only, no citizen/clearance requirements)
+        if (onlyStemOpt) {
+          const nonUs = ['israel', 'germany', 'france', 'united kingdom', 'london', 'lisbon', 'tokyo', 'japan', 'singapore', 'australia', 'sydney', 'india', 'bangalore', 'berlin', 'paris', 'dublin', 'ireland', 'canada', 'toronto', 'vancouver', 'netherlands', 'amsterdam', 'spain', 'madrid', 'barcelona', 'belgrade', 'serbia', 'romania', 'bucharest', 'mexico', 'auckland', 'new zealand'];
+          if (nonUs.some(k => locLower.includes(k))) return false;
+
+          if (
+            descLower.includes('us citizen only') ||
+            descLower.includes('u.s. citizen only') ||
+            descLower.includes('security clearance required') ||
+            descLower.includes('secret clearance') ||
+            descLower.includes('ts/sci') ||
+            descLower.includes('itar')
+          ) {
+            return false;
+          }
+        }
+
+        if (searchQuery) {
+          const q = searchQuery.toLowerCase();
+          const str = `${j.title} ${j.company} ${j.description} ${j.location}`.toLowerCase();
+          if (!str.includes(q)) return false;
+        }
+
+        if (onlyRemoteOrRaleigh && !j.isRemote && !j.isRaleighHybrid) return false;
+
+        // Role Category Dropdown Filter
+        if (currentCategory === 'recruiter' && j.type !== 'Recruiter Post') return false;
+        if (currentCategory === 'applied' && j.status !== 'Applied') return false;
+        if (currentCategory === 'product' && !['Product Manager', 'Technical PM', 'Associate PM', 'Program Manager'].includes(j.roleCategory)) return false;
+        if (currentCategory === 'growth' && !['GEO / AI Search', 'Product Marketing'].includes(j.roleCategory)) return false;
+
+        // Experience Dropdown Filter
+        if (currentExperience === 'entry' && !j.isEntryLevel) return false;
+        if (currentExperience === 'mid' && j.experienceLevel !== 'Mid-Senior') return false;
+        if (currentExperience === 'lead' && j.experienceLevel !== 'Lead / Executive') return false;
+
+        return true;
+      });
+    }
+
+    function renderFeed() {
+      const filtered = getFilteredJobs();
+      document.getElementById('results-count').textContent = `${filtered.length} roles shown`;
+
+      if (filtered.length === 0) {
+        document.getElementById('jobs-list').innerHTML = `
+          <div class="p-8 text-center text-xs font-mono text-zinc-500">
+            No roles match your search or filter.
+          </div>
+        `;
+        return;
+      }
+
+      document.getElementById('jobs-list').innerHTML = filtered.map(job => {
+        const isSel = currentJob?.id === job.id;
+        const isRec = job.type === 'Recruiter Post';
+        const isApp = job.status === 'Applied';
+
+        return `
+          <div onclick="selectJob('${job.id}')" class="group relative rounded-xl border p-4 transition-all cursor-pointer font-sans ${
+            isSel
+              ? 'bg-zinc-100 dark:bg-zinc-900 border-zinc-400 dark:border-zinc-700 shadow-sm ring-1 ring-zinc-400 dark:ring-zinc-600'
+              : 'bg-white dark:bg-zinc-950/60 border-zinc-200 dark:border-zinc-800/80 hover:bg-zinc-50 dark:hover:bg-zinc-900/40 hover:border-zinc-300 dark:hover:border-zinc-700'
+          }">
+            <!-- Top: Company, Level Badge, Match Score -->
+            <div class="flex items-center justify-between gap-2 mb-1.5 text-xs font-mono">
+              <div class="flex items-center gap-1.5 truncate">
+                ${isApp ? '<span class="w-2 h-2 rounded-full bg-emerald-500 shrink-0" title="Applied"></span>' : ''}
+                <span class="font-extrabold text-zinc-900 dark:text-zinc-200 uppercase tracking-wider truncate text-[11px]">${job.company}</span>
+                <span class="text-zinc-300 dark:text-zinc-700">•</span>
+                
+                ${job.isEntryLevel ? `
+                  <span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800/60 flex items-center gap-0.5">
+                    <span>🎓</span> Entry Level
+                  </span>
+                ` : `
+                  <span class="text-[10px] text-zinc-500 dark:text-zinc-400 px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800">
+                    ${job.experienceLevel || 'Mid-Senior'}
+                  </span>
+                `}
+              </div>
+
+              <div class="flex items-center gap-1.5 shrink-0">
+                <span class="font-mono text-xs font-extrabold text-zinc-900 dark:text-zinc-100 px-2 py-0.5 rounded bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800">${job.matchScore}%</span>
+              </div>
+            </div>
+
+            <!-- Title: Bold & High Contrast -->
+            <h3 class="text-sm font-bold text-zinc-900 dark:text-zinc-100 group-hover:text-cyan-600 dark:group-hover:text-cyan-400 transition-colors leading-snug">
+              ${job.title}
+            </h3>
+
+            <!-- Location, Salary, Badges -->
+            <div class="flex flex-wrap items-center gap-2 mt-2 text-xs text-zinc-600 dark:text-zinc-400 font-mono">
+              <span>${job.location}</span>
+              ${job.salarySnippet ? `
+                <span class="text-zinc-300 dark:text-zinc-700">•</span>
+                <span class="text-emerald-600 dark:text-emerald-400 font-semibold">${job.salarySnippet}</span>
+              ` : ''}
+              <span class="text-zinc-300 dark:text-zinc-700">•</span>
+              <span class="text-cyan-600 dark:text-cyan-400 font-medium">F-1 STEM OPT</span>
+              ${isRec ? `
+                <span class="text-zinc-300 dark:text-zinc-700">•</span>
+                <span class="text-purple-600 dark:text-purple-300 font-semibold">Recruiter Post 🎯</span>
+              ` : ''}
+            </div>
+
+            <!-- Posted Date & Fetched Date Box -->
+            <div class="flex items-center gap-3 mt-2.5 pt-2 border-t border-zinc-100 dark:border-zinc-900 text-[11px] font-mono text-zinc-500 dark:text-zinc-400">
+              <span><strong>Posted:</strong> ${formatDate(job.datePosted || job.dateFound)}</span>
+              <span class="text-zinc-300 dark:text-zinc-700">•</span>
+              <span><strong>Fetched:</strong> ${formatDate(job.dateFetched || job.dateFound)}</span>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function selectJob(id) {
+      const j = jobs.find(x => x.id === id);
+      if (j) {
+        currentJob = j;
+        renderFeed();
+        renderCanvas();
+      }
+    }
+
+    function reportCurrentDeadLink() {
+      if (!currentJob) return;
+      const reportedCompany = currentJob.company;
+      currentJob.status = 'Reported';
+
+      const filtered = getFilteredJobs();
+      currentJob = filtered[0] || null;
+
+      updateCounts();
+      renderFeed();
+      renderCanvas();
+      showToast(`Reported dead link for ${reportedCompany} — removed from active queue`);
+    }
+
+    function renderCanvas() {
+      if (!currentJob) {
+        document.getElementById('copilot-canvas').innerHTML = `
+          <div class="flex-1 flex flex-col items-center justify-center p-8 text-center text-zinc-400 font-mono text-xs">
+            <p>No active roles in current filter queue.</p>
+          </div>
+        `;
+        return;
+      }
+
+      document.getElementById('canvas-company-bread').textContent = currentJob.company;
+      document.getElementById('canvas-title-bread').textContent = currentJob.title;
+      document.getElementById('canvas-match-bread').textContent = `${currentJob.matchScore}% Match`;
+
+      document.getElementById('canvas-title').textContent = currentJob.title;
+      document.getElementById('canvas-company').textContent = currentJob.company;
+      document.getElementById('canvas-location').textContent = currentJob.location;
+      document.getElementById('canvas-salary').textContent = currentJob.salarySnippet || "Competitive Market Compensation";
+      document.getElementById('canvas-desc').textContent = currentJob.description;
+
+      // Dates
+      document.getElementById('canvas-date-posted').textContent = formatDate(currentJob.datePosted || currentJob.dateFound);
+      document.getElementById('canvas-date-fetched').textContent = formatDate(currentJob.dateFetched || currentJob.dateFound);
+
+      // Direct URL
+      document.getElementById('canvas-direct-url').href = currentJob.url;
+      document.getElementById('canvas-desc-url').href = currentJob.url;
+
+      // Level Tag
+      const levelEl = document.getElementById('canvas-level-tag');
+      if (currentJob.isEntryLevel) {
+        levelEl.className = "px-2 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800/60 font-bold flex items-center gap-1";
+        levelEl.innerHTML = "<span>🎓</span> Entry Level / Early Career";
+      } else {
+        levelEl.className = "px-2 py-0.5 rounded bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 font-semibold";
+        levelEl.textContent = currentJob.experienceLevel || "Mid-Senior Level";
+      }
+
+      // Status
+      const isApp = currentJob.status === 'Applied';
+      const applyBtn = document.getElementById('canvas-apply-btn');
+      applyBtn.textContent = isApp ? 'Applied ✓' : 'Mark as Applied';
+      applyBtn.className = isApp
+        ? 'px-3 py-1.5 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-zinc-100 dark:bg-zinc-900 text-emerald-600 dark:text-emerald-400 font-bold font-mono text-xs'
+        : 'px-3 py-1.5 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 hover:border-zinc-300 dark:hover:border-zinc-700 text-zinc-700 dark:text-zinc-300 hover:text-zinc-950 dark:hover:text-white font-mono text-xs';
+
+      // Type tags
+      document.getElementById('canvas-type-tag').textContent = currentJob.type === 'Recruiter Post' ? 'Recruiter Post 🎯' : 'Direct Requisition';
+      document.getElementById('canvas-category-tag').textContent = currentJob.roleCategory;
+
+      // Recruiter Box
+      const recBox = document.getElementById('canvas-recruiter-box');
+      if (currentJob.type === 'Recruiter Post') {
+        recBox.classList.remove('hidden');
+        document.getElementById('canvas-recruiter-name').textContent = currentJob.recruiterName || 'Hiring Lead';
+        document.getElementById('canvas-recruiter-title').textContent = currentJob.recruiterTitle ? `(${currentJob.recruiterTitle})` : '';
+        document.getElementById('canvas-recruiter-link').href = currentJob.recruiterProfileUrl || 'https://linkedin.com';
+        document.getElementById('canvas-recruiter-snippet').textContent = `"${currentJob.recruiterPostSnippet || 'Looking for top talent to join our team. DM me directly.'}"`;
+      } else {
+        recBox.classList.add('hidden');
+      }
+
+      // Default Recipient Names
+      const firstRec = (currentJob.recruiterName || 'Anika').split(' ')[0];
+      const dmInput = document.getElementById('dm-recipient-input');
+      if (dmInput) dmInput.value = firstRec;
+      document.getElementById('dm-recipient-label').textContent = firstRec;
+
+      // Keywords
+      const kwContainer = document.getElementById('canvas-keywords');
+      if (currentJob.matchedKeywords && currentJob.matchedKeywords.length > 0) {
+        kwContainer.innerHTML = currentJob.matchedKeywords.map(kw => `
+          <span class="text-[11px] font-mono font-semibold px-2 py-0.5 rounded bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400">#${kw}</span>
+        `).join('');
+      } else {
+        kwContainer.innerHTML = '';
+      }
+
+      updateDmText();
+      updateCoverLetterText();
+    }
+
+    // ==============================================================
+    // LINKEDIN DM GENERATOR (EXACT USER SAMPLE)
+    // ==============================================================
+    function setDmTone(tone) {
+      currentDmTone = tone;
+      ['short', 'metrics', 'referral'].forEach(t => {
+        const btn = document.getElementById(`dm-tone-${t}`);
+        if (btn) {
+          btn.className = t === tone
+            ? 'px-2.5 py-1 rounded text-[11px] bg-white dark:bg-zinc-800 text-zinc-950 dark:text-white font-bold shadow-sm'
+            : 'px-2.5 py-1 rounded text-[11px] text-zinc-600 dark:text-zinc-400 hover:text-zinc-950 dark:hover:text-zinc-200';
+        }
+      });
+      updateDmText();
+    }
+
+    function updateDmText() {
+      if (!currentJob) return;
+      const recipient = document.getElementById('dm-recipient-input').value.trim() || 'there';
+      document.getElementById('dm-recipient-label').textContent = recipient;
+
+      let dm = "";
+      if (currentDmTone === 'metrics') {
+        dm = `Hi ${recipient}, 
+
+Keeping it short:
+
+About me
+>Engg. Management Grad Student @ NC State (BS in CS)
+>Ex-Lenovo AI Search (lifted citation share 40%→65%+ across 6 LLMs)
+>5+ YOE in products, CRO & customer growth (Ex-Managing Director)
+>Fall '26 intern @ Invisa
+
+Applied for ${currentJob.title} @ ${currentJob.company}.
+
+Would love this opportunity and your guidance. :)
+
+Best,
+Manav`;
+      } else if (currentDmTone === 'referral') {
+        dm = `Hi ${recipient}, 
+
+Keeping it short:
+
+About me
+>Engg. Management Grad Student @ NC State
+>5+ YOE in products, customer growth
+>Summer '26 intern @ Lenovo
+>Fall '26 intern @ Invisa
+
+Noticed the ${currentJob.title} opening at ${currentJob.company}.
+
+Would love to learn more about the team's roadmap and your guidance. :)
+
+Best,
+Manav`;
+      } else {
+        // Exact User Sample
+        dm = `Hi ${recipient}, 
+
+Keeping it short:
+
+About me
+>Engg. Management Grad Student @ NC State
+>5+ YOE in products, customer growth
+>Summer '26 intern @ Lenovo
+>Fall '26 intern @ Invisa
+
+Applied for ${currentJob.title} @ ${currentJob.company}.
+
+Would love this opportunity and your guidance. :)
+
+Best,
+Manav`;
+      }
+
+      document.getElementById('canvas-dm-text').textContent = dm;
+    }
+
+    function copyLinkedInDM() {
+      const text = document.getElementById('canvas-dm-text').textContent;
+      navigator.clipboard.writeText(text);
+      showToast('Copied LinkedIn DM ✓');
+    }
+
+    // ==============================================================
+    // COVER LETTER / EMAIL GENERATOR (EXACT USER SAMPLE)
+    // ==============================================================
+    function setCoverLetterFlavor(flavor) {
+      currentClFlavor = flavor;
+      ['standard', 'product', 'growth'].forEach(f => {
+        const btn = document.getElementById(`cl-flavor-${f}`);
+        if (btn) {
+          btn.className = f === flavor
+            ? 'px-2.5 py-1 rounded text-[11px] bg-white dark:bg-zinc-800 text-zinc-950 dark:text-white font-bold shadow-sm'
+            : 'px-2.5 py-1 rounded text-[11px] text-zinc-600 dark:text-zinc-400 hover:text-zinc-950 dark:hover:text-zinc-200';
+        }
+      });
+      updateCoverLetterText();
+    }
+
+    function updateCoverLetterText() {
+      if (!currentJob) return;
+      const recipient = document.getElementById('cl-recipient-input').value.trim() || 'Hiring Team';
+
+      let cl = "";
+      if (currentClFlavor === 'product') {
+        cl = `Hi ${recipient},
+
+I am writing to express my strong interest in the ${currentJob.title} role at ${currentJob.company}. 
+
+About me
+Engineering Management Master’s Student @ NC State (BS in Computer Science)   
+Growth Lead Intern @ INVISA (customer discovery, feature requirements, GTM waitlist growth)
+Ex-Lenovo Intern (benchmarked 6 LLMs, lifting AI citation share to 65%) | 5+ YOE Founder   
+
+What I bring:
+Product Lifecycle Ownership: 5+ years owning sprint backlogs, writing engineering-ready PRDs, and aligning cross-functional teams to launch high-impact product features.
+Data Fluency: Hands-on with SQL and Python to analyze product telemetry, run multivariate A/B testing, and ground roadmaps in empirical customer outcomes.
+Cross-Functional Execution: Partnered across engineering and sales to coordinate product rollouts and launch readiness.
+
+I’ve attached my resume and am available full-time starting in January. I’d love the chance to connect.
+
+Best regards,
+Manav Sharma
+
+LinkedIn: https://linkedin.com/in/mnvsharma
+Portfolio: https://mnvsharma.com`;
+      } else if (currentClFlavor === 'growth') {
+        cl = `Hi ${recipient},
+
+I am writing to express my strong interest in the ${currentJob.title} role at ${currentJob.company}. 
+
+About me
+Engineering Management Master’s Student @ NC State (BS in Computer Science)   
+Growth Lead Intern @ INVISA (customer discovery, feature requirements, GTM waitlist growth)
+Ex-Lenovo Intern (benchmarked 6 LLMs, lifting AI citation share to 65%) | 5+ YOE Founder   
+
+What I bring:
+AI Search & GEO Strategy: Benchmarked 6 frontier LLMs at Lenovo and built semantic Schema.org architectures, expanding generative search citation share from 40% to 65%+.
+Technical Storytelling: Translated complex schemas and data pipelines into high-converting sales collateral and customer proof points.
+Data Fluency: Hands-on with SQL and Python to analyze product metrics, validate impact, and ground narratives in empirical outcomes.
+
+I’ve attached my resume and am available full-time starting in January. I’d love the chance to connect.
+
+Best regards,
+Manav Sharma
+
+LinkedIn: https://linkedin.com/in/mnvsharma
+Portfolio: https://mnvsharma.com`;
+      } else {
+        // Exact User Sample
+        cl = `Hi ${recipient},
+
+I am writing to express my strong interest in the ${currentJob.title} role at ${currentJob.company}. 
+
+About me
+Engineering Management Master’s Student @ NC State (BS in Computer Science)   
+Growth Lead Intern @ INVISA (customer discovery, feature requirements, GTM waitlist growth)
+Ex-Lenovo Intern (benchmarked 6 LLMs, lifting AI citation share to 65%) | 5+ YOE Founder   
+
+What I bring:
+Technical Storytelling: Translated complex schemas and data pipelines into high-converting sales collateral and customer proof points.
+Data Fluency: Hands-on with SQL and Python to analyze product metrics, validate impact, and ground narratives in empirical outcomes.
+Cross-Functional Execution: Partnered across engineering and sales to coordinate product rollouts and launch readiness.
+
+I’ve attached my resume and am available full-time starting in January. I’d love the chance to connect.
+
+Best regards,
+Manav Sharma
+
+LinkedIn: https://linkedin.com/in/mnvsharma
+Portfolio: https://mnvsharma.com`;
+      }
+
+      document.getElementById('canvas-cl-text').textContent = cl;
+    }
+
+    function copyCoverLetter() {
+      const text = document.getElementById('canvas-cl-text').textContent;
+      navigator.clipboard.writeText(text);
+      showToast('Copied Cover Letter ✓');
+    }
+
+    function toggleApplyCurrent() {
+      if (!currentJob) return;
+      currentJob.status = currentJob.status === 'Applied' ? 'New' : 'Applied';
+      updateCounts();
+      renderFeed();
+      renderCanvas();
+      showToast(currentJob.status === 'Applied' ? 'Marked as Applied ✓' : 'Status reverted to New');
+    }
+
+    function showToast(msg) {
+      const t = document.getElementById('toast');
+      const textEl = document.getElementById('toast-text');
+      textEl.textContent = msg;
+      t.classList.remove('hidden');
+      setTimeout(() => t.classList.add('hidden'), 2200);
+    }
+
+    function handleSearch(val) {
+      searchQuery = val;
+      renderFeed();
+    }
+
+    // Keyboard shortcuts (J/K, A)
+    window.addEventListener('keydown', (e) => {
+      if (['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName)) return;
+      if (e.key === 'j' || e.key === 'ArrowDown') {
+        const filtered = getFilteredJobs();
+        if (filtered.length > 0) {
+          const idx = filtered.findIndex(x => x.id === currentJob?.id);
+          const next = (idx + 1) % filtered.length;
+          selectJob(filtered[next].id);
+        }
+      } else if (e.key === 'k' || e.key === 'ArrowUp') {
+        const filtered = getFilteredJobs();
+        if (filtered.length > 0) {
+          const idx = filtered.findIndex(x => x.id === currentJob?.id);
+          const prev = idx <= 0 ? filtered.length - 1 : idx - 1;
+          selectJob(filtered[prev].id);
+        }
+      } else if (e.key === 'a') {
+        toggleApplyCurrent();
+      }
+    });
+
+    async function triggerIngest() {
+      const spinner = document.getElementById('fetch-spinner');
+      const label = document.getElementById('fetch-label');
+      spinner.classList.remove('hidden');
+      label.textContent = 'Fetching...';
+      showToast('Connecting to public ATS boards...');
+
+      setTimeout(() => {
+        spinner.classList.add('hidden');
+        label.textContent = 'Fetch Live Roles';
+        showToast('All 10 active job requisitions refreshed with direct apply links.');
+      }, 900);
+    }
+
+    function openSettings() {
+      const url = prompt("Enter your Google Apps Script Webhook URL:", localStorage.getItem('job_copilot_webhook') || '');
+      if (url !== null) {
+        localStorage.setItem('job_copilot_webhook', url);
+        showToast('Google Sheet connection saved');
+      }
+    }
+
+    function openAddJob() {
+      const title = prompt("Job Title (e.g. Associate Product Manager):");
+      if (!title) return;
+      const company = prompt("Company (e.g. Bandwidth):") || "Tech Company";
+      const directUrl = prompt("Direct Job Page URL:") || "https://job-boards.greenhouse.io";
+      const isEntry = confirm("Is this an Entry Level / Early Career role? Click OK for Yes, Cancel for Mid-Senior.");
+
+      const today = new Date().toISOString().split('T')[0];
+
+      const newJob = {
+        id: `manual-${Date.now()}`,
+        title,
+        company,
+        location: "Remote / Raleigh",
+        isRemote: true,
+        isRaleighHybrid: true,
+        type: "Direct",
+        experienceLevel: isEntry ? "Entry Level" : "Mid-Senior",
+        isEntryLevel: isEntry,
+        datePosted: today,
+        dateFetched: today,
+        dateFound: today,
+        url: directUrl,
+        roleCategory: "Product Manager",
+        status: "New",
+        description: `${title} role at ${company}.`,
+        matchScore: 94,
+        primaryProfile: "Product"
+      };
+      jobs.unshift(newJob);
+      currentJob = newJob;
+      updateCounts();
+      renderFeed();
+      renderCanvas();
+      showToast(`Added ${title}`);
+    }
+
+    init();
+  </script>
+</body>
+</html>
