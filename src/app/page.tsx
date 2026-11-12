@@ -55,27 +55,43 @@ export default function Home() {
     if (savedGemini) setGeminiKey(savedGemini);
 
     async function loadJobs() {
+      const basePath = process.env.NEXT_PUBLIC_BASE_PATH || '';
       try {
-        const res = await fetch('/api/jobs');
-        if (res.ok) {
-          const data = await res.json();
-          if (Array.isArray(data.jobs) && data.jobs.length > 0) {
-            setJobs(data.jobs);
-            setSelectedJob(data.jobs[0]);
-            return;
-          }
-        }
-      } catch (e) {}
-
-      // Fallback to static seed
-      try {
-        const seedRes = await fetch('/data/seed_jobs.json');
+        const seedRes = await fetch(`${basePath}/data/seed_jobs.json?t=${Date.now()}`);
         if (seedRes.ok) {
-          const seedData = await seedRes.json();
-          setJobs(seedData);
-          if (seedData.length > 0) setSelectedJob(seedData[0]);
+          let list: Job[] = await seedRes.json();
+
+          // Merge any manually added jobs from localStorage
+          try {
+            const added: Job[] = JSON.parse(localStorage.getItem('job_copilot_added_jobs') || '[]');
+            if (Array.isArray(added) && added.length > 0) {
+              list = [...added, ...list];
+            }
+          } catch (e) {}
+
+          // Apply saved status overrides from localStorage (Applied, Reported, etc.)
+          try {
+            const savedStatuses: Record<string, { status: JobStatus; appliedDate?: string }> = JSON.parse(
+              localStorage.getItem('job_copilot_statuses') || '{}'
+            );
+            list = list.map((job) => {
+              if (savedStatuses[job.id]) {
+                return {
+                  ...job,
+                  status: savedStatuses[job.id].status,
+                  appliedDate: savedStatuses[job.id].appliedDate || job.appliedDate,
+                };
+              }
+              return job;
+            });
+          } catch (e) {}
+
+          setJobs(list);
+          if (list.length > 0) setSelectedJob(list[0]);
         }
-      } catch (err) {}
+      } catch (err) {
+        console.error('Failed to load seed listings:', err);
+      }
     }
 
     loadJobs();
@@ -231,16 +247,20 @@ export default function Home() {
 
     setToastMessage(newStatus === 'Applied' ? `Marked as Applied ✓` : `Reverted status to New`);
 
+    // Persist status change to localStorage
     try {
-      await fetch('/api/jobs', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: job.id, status: newStatus }),
-      });
-      if (webhookUrl) {
-        await syncJobStatusToGoogleSheet(job.id, newStatus, webhookUrl);
-      }
-    } catch (err) {}
+      const savedStatuses = JSON.parse(localStorage.getItem('job_copilot_statuses') || '{}');
+      savedStatuses[job.id] = {
+        status: newStatus,
+        appliedDate: newStatus === 'Applied' ? new Date().toISOString().split('T')[0] : undefined,
+      };
+      localStorage.setItem('job_copilot_statuses', JSON.stringify(savedStatuses));
+    } catch (e) {}
+
+    // Sync to Google Sheet
+    if (webhookUrl) {
+      syncJobStatusToGoogleSheet(job.id, newStatus, webhookUrl);
+    }
   }, [selectedJob, webhookUrl]);
 
   // Action: Report Dead / Non-existent Link
@@ -260,16 +280,20 @@ export default function Home() {
 
     setToastMessage(`Reported dead link for ${job.company} — removed from queue`);
 
+    // Persist reported status to localStorage
     try {
-      await fetch('/api/jobs', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: job.id, status: 'Reported', notes: 'Reported dead link' }),
-      });
-      if (webhookUrl) {
-        await syncJobStatusToGoogleSheet(job.id, 'Reported', webhookUrl);
-      }
-    } catch (err) {}
+      const savedStatuses = JSON.parse(localStorage.getItem('job_copilot_statuses') || '{}');
+      savedStatuses[job.id] = {
+        status: 'Reported',
+        notes: 'Reported dead link',
+      };
+      localStorage.setItem('job_copilot_statuses', JSON.stringify(savedStatuses));
+    } catch (e) {}
+
+    // Sync to Google Sheet
+    if (webhookUrl) {
+      syncJobStatusToGoogleSheet(job.id, 'Reported', webhookUrl);
+    }
   }, [filteredJobs, selectedJob, webhookUrl]);
 
   // Action: Copy LinkedIn DM
@@ -284,45 +308,87 @@ export default function Home() {
     setTimeout(() => setCopiedPitchId(null), 2000);
   }, []);
 
-  // Action: Ingest new listings
+  // Action: Ingest / Refresh listings
   const handleIngest = async () => {
     setIsIngesting(true);
-    setToastMessage('Fetching active job openings from ATS boards...');
+    setToastMessage('Checking latest ATS postings...');
+    const basePath = process.env.NEXT_PUBLIC_BASE_PATH || '';
     try {
-      const res = await fetch('/api/ingest', { method: 'POST' });
+      const res = await fetch(`${basePath}/data/seed_jobs.json?t=${Date.now()}`);
       if (res.ok) {
-        const data = await res.json();
-        if (data.jobs && data.jobs.length > 0) {
-          setJobs((prev) => [...data.jobs, ...prev]);
-          setToastMessage(`Discovered ${data.addedCount} new active roles!`);
-        } else {
-          setToastMessage('All active listings are up to date.');
+        const freshJobs: Job[] = await res.json();
+        try {
+          const added: Job[] = JSON.parse(localStorage.getItem('job_copilot_added_jobs') || '[]');
+          const statuses: Record<string, { status: JobStatus; appliedDate?: string }> = JSON.parse(
+            localStorage.getItem('job_copilot_statuses') || '{}'
+          );
+          let merged = [...added, ...freshJobs];
+          merged = merged.map((j) =>
+            statuses[j.id]
+              ? { ...j, status: statuses[j.id].status, appliedDate: statuses[j.id].appliedDate }
+              : j
+          );
+          setJobs(merged);
+        } catch (e) {
+          setJobs(freshJobs);
         }
+        setToastMessage(`Pipeline refreshed (${freshJobs.length} active roles)`);
       }
     } catch (e) {
-      setToastMessage('Fetch complete. Pipeline synchronized.');
+      setToastMessage('Pipeline up to date.');
     } finally {
-      setIsIngesting(false);
+      setTimeout(() => setIsIngesting(false), 500);
     }
   };
 
   const handleAddJob = async (newJobData: Partial<Job>) => {
+    const today = new Date().toISOString().split('T')[0];
+    const isEntry =
+      newJobData.isEntryLevel ??
+      (newJobData.experienceLevel === 'Entry Level' ||
+        (newJobData.title || '').toLowerCase().includes('associate') ||
+        (newJobData.title || '').toLowerCase().includes('junior'));
+    const expLevel = newJobData.experienceLevel || (isEntry ? 'Entry Level' : 'Mid-Senior');
+
+    const jobToAdd: Job = {
+      id: `job-${Date.now()}`,
+      title: newJobData.title || 'Untitled Role',
+      company: newJobData.company || 'Unknown Company',
+      location: newJobData.location || 'Remote',
+      isRemote: newJobData.isRemote ?? true,
+      isRaleighHybrid: newJobData.isRaleighHybrid ?? false,
+      type: newJobData.type || 'Direct',
+      experienceLevel: expLevel,
+      isEntryLevel: isEntry,
+      datePosted: newJobData.datePosted || today,
+      dateFetched: today,
+      dateFound: today,
+      url: newJobData.url || 'https://linkedin.com',
+      roleCategory: newJobData.roleCategory || 'Product Manager',
+      status: 'New',
+      source: newJobData.source || 'Manual',
+      salarySnippet: newJobData.salarySnippet || 'Competitive',
+      description: newJobData.description || `${newJobData.title} at ${newJobData.company}`,
+      matchScore: newJobData.matchScore || 95,
+      primaryProfile: newJobData.primaryProfile || 'Product',
+      matchedKeywords: newJobData.matchedKeywords || ['product manager'],
+      isStemOptFriendly: newJobData.isStemOptFriendly ?? true,
+    };
+
+    setJobs((prev) => [jobToAdd, ...prev]);
+    setSelectedJob(jobToAdd);
+    setToastMessage(`Added "${jobToAdd.title}"`);
+
+    // Persist to localStorage
     try {
-      const res = await fetch('/api/jobs', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newJobData),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        if (data.job) {
-          setJobs((prev) => [data.job, ...prev]);
-          setSelectedJob(data.job);
-          setToastMessage(`Added "${data.job.title}"`);
-          if (webhookUrl) appendJobToGoogleSheet(data.job, webhookUrl);
-        }
-      }
+      const savedAdded = JSON.parse(localStorage.getItem('job_copilot_added_jobs') || '[]');
+      localStorage.setItem('job_copilot_added_jobs', JSON.stringify([jobToAdd, ...savedAdded]));
     } catch (e) {}
+
+    // Sync to Google Sheet
+    if (webhookUrl) {
+      appendJobToGoogleSheet(jobToAdd, webhookUrl);
+    }
   };
 
   return (
